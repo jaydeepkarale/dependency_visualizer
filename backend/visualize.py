@@ -19,17 +19,31 @@ async def upload_file(file: UploadFile):
     data = yaml.safe_load(content)
 
     component = data.get("component", os.path.splitext(file.filename)[0])
-    nodes = {component: {"id": component, "label": component, "info": "Main Component"}}
+    nodes = {
+        component: {
+            "id": component,
+            "label": component,
+            "metadata": {"type": "component"},
+        }
+    }
     edges = []
 
     # Upstreams
     for system, meta in (data.get("upstream") or {}).items():
-        nodes[system] = {"id": system, "label": system, "info": meta.get("info", "")}
+        nodes[system] = {
+            "id": system,
+            "label": system,
+            "metadata": {"type": "upstream", **meta},
+        }
         edges.append({"from": system, "to": component})
 
     # Downstreams
     for system, meta in (data.get("downstream") or {}).items():
-        nodes[system] = {"id": system, "label": system, "info": meta.get("info", "")}
+        nodes[system] = {
+            "id": system,
+            "label": system,
+            "metadata": {"type": "downstream", **meta},
+        }
         edges.append({"from": component, "to": system})
 
     return {
