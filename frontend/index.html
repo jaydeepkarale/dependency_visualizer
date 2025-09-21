@@ -50,6 +50,7 @@
     </div>
   </div>
 
+  <!-- ✅ Script must come *after* the DOM -->
   <script>
     let network, currentData;
 
@@ -60,10 +61,16 @@
       const formData = new FormData();
       formData.append("file", fileInput);
 
+      // 🔴 Make sure FastAPI is running at http://localhost:8000
       const res = await fetch("http://localhost:8000/upload", {
         method: "POST",
         body: formData,
       });
+
+      if (!res.ok) {
+        alert("Failed to upload file: " + res.status);
+        return;
+      }
 
       currentData = await res.json();
 
@@ -77,7 +84,7 @@
           return {
             id: n.id,
             label: n.label,
-            title: n.info || "", // tooltip
+            title: n.metadata?.info || "", // tooltip
             shape: "box",
             level: isComponent ? 1 : isUpstream ? 0 : 2,
             widthConstraint: { minimum: isComponent ? 160 : 120 },
@@ -113,7 +120,7 @@
 
       network = new vis.Network(container, { nodes, edges }, options);
 
-      // Add click handler for sidebar
+      // Sidebar click handler
       network.on("selectNode", function (params) {
         const nodeId = params.nodes[0];
         showNodeDetails(nodeId);
@@ -141,16 +148,20 @@
           <p>Downstreams: <span class="font-bold">${downstreamCount}</span></p>
         `;
       } else {
-        const isUpstream = currentData.edges.some(
-          (e) => e.from === nodeId && e.to === currentData.component
-        );
-        const direction = isUpstream ? "Upstream" : "Downstream";
+        const metadata = node.metadata || {};
+        let metaHtml = "";
+        Object.entries(metadata).forEach(([key, value]) => {
+          if (key !== "type") {
+            metaHtml += `<p class="mb-1"><span class="font-semibold">${key}:</span> ${value}</p>`;
+          }
+        });
 
         details.innerHTML = `
           <p class="mb-2"><span class="font-semibold">System:</span> ${node.label}</p>
-          <p class="mb-2">Type: <span class="font-bold">${direction}</span></p>
-          <p class="mb-2"><span class="font-semibold">Info:</span></p>
-          <p class="text-sm bg-gray-100 p-2 rounded">${node.info || "No info provided"}</p>
+          <p class="mb-2">Type: <span class="font-bold">${metadata.type}</span></p>
+          <div class="bg-gray-100 p-2 rounded text-sm">
+            ${metaHtml || "No metadata provided"}
+          </div>
         `;
       }
     }
